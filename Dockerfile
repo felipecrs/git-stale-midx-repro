@@ -1,4 +1,4 @@
-FROM buildpack-deps:noble-scm AS build
+FROM buildpack-deps:noble-curl AS build
 
 ARG GIT_VERSION=2.55.0
 
@@ -16,7 +16,7 @@ RUN set -eux; \
     make -j"$(nproc)" NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 all; \
     make NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 prefix=/opt/git install
 
-FROM buildpack-deps:noble-scm
+FROM buildpack-deps:noble-curl
 
 COPY --from=build /opt/git /opt/git
 ENV PATH="/opt/git/bin:${PATH}"
