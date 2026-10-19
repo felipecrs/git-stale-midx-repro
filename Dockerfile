@@ -1,11 +1,23 @@
-FROM buildpack-deps:noble-scm
+FROM buildpack-deps:noble-scm AS build
+
+ARG GIT_VERSION=2.55.0
 
 RUN set -eux; \
-    mkdir -p /etc/apt/keyrings; \
-    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xF911AB184317630C59970973E363C90F8F1B6217" -o /etc/apt/keyrings/git-core-ppa.asc; \
-    echo "deb [signed-by=/etc/apt/keyrings/git-core-ppa.asc] http://ppa.launchpad.net/git-core/ppa/ubuntu noble main" > /etc/apt/sources.list.d/git-core-ppa.list; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        git=1:2.55.0-0ppa1~ubuntu24.04.2 \
-        git-man=1:2.55.0-0ppa1~ubuntu24.04.2; \
-    git --version
+        build-essential \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        zlib1g-dev; \
+    cd /tmp; \
+    curl -fsSLO "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_VERSION}.tar.gz"; \
+    tar xzf "git-${GIT_VERSION}.tar.gz"; \
+    cd "git-${GIT_VERSION}"; \
+    make -j"$(nproc)" NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 all; \
+    make NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 prefix=/usr/local install
+
+FROM buildpack-deps:noble-scm
+
+COPY --from=build /usr/local /usr/local
+
+RUN git --version
