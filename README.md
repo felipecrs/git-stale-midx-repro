@@ -1,9 +1,9 @@
-# Stale multi-pack-index reproduction for git 2.54
+# Stale multi-pack-index reproduction
 
 A minimal, deterministic reproduction of a bare-repository corruption state where the
 multi-pack-index references pack files that no longer exist on disk. Every git command that
 trusts the index then fails for the objects it maps to the dead packs, even though every object
-still exists in other packs on disk. Reproduced and verified on git 2.54.0.
+still exists in other packs on disk. Verified on git 2.43.0 and git 2.54.0.
 
 ## The failure
 
@@ -44,7 +44,7 @@ fetch returning.
 
 ## The reproduction
 
-`stale-midx.sh` builds a small bare mirror and walks it through the exact state, with the
+`reproduce.sh` builds a small bare mirror and walks it through the exact state, with the
 background maintenance disabled so the layout stays deterministic:
 
 1. A remote with two branches and two 256KB files; the mirror is cloned from it, giving one
@@ -64,32 +64,31 @@ background maintenance disabled so the layout stays deterministic:
 
 ## Running it
 
-Needs git 2.54 and bash. The easiest way is Docker:
+Needs bash and a git with multi-pack-index support (2.28+). The easiest way is Docker:
 
 ```bash
 docker run --rm \
-  -v "$PWD/stale-midx.sh":/scripts/stale-midx.sh \
+  -v "$PWD/reproduce.sh":/scripts/reproduce.sh \
   -v "$PWD/.repro":/data \
-  -e REPRO_MIDX_DATA_DIR=/data/run \
-  --entrypoint sh alpine/git:2.54.0 \
-  -c 'apk add -q bash >/dev/null 2>&1; bash /scripts/stale-midx.sh'
+  -e REPRO_DATA_DIR=/data/run \
+  --entrypoint bash buildpack-deps:noble-scm \
+  /scripts/reproduce.sh
 ```
 
-Or on any machine with git 2.54:
+Or on any machine with git installed:
 
 ```bash
-./stale-midx.sh
+./reproduce.sh
 ```
 
-The script writes its data to `$REPRO_MIDX_DATA_DIR`, defaulting to `$REPRO_DATA_DIR/midx`
-(default `$PWD/.repro`). It removes and recreates that directory on every run.
+The script writes its data to `$REPRO_DATA_DIR`, default `$PWD/.repro`. It removes and
+recreates that directory on every run.
 
 Determinism: the index maps an object to its newest holding pack using second-granularity file
 timestamps, so packs created within the same wall-clock second tie and the mapping becomes
 unpredictable (see the quirks list below). The script sleeps before the consolidation step to
-keep the pack timestamps in distinct seconds, which makes the construction deterministic: six
-consecutive runs with different random blob content each reproduced all three symptoms and the
-full recovery.
+keep the pack timestamps in distinct seconds, which makes the construction deterministic: consecutive runs
+with different random blob content each reproduced all three symptoms and the full recovery.
 
 Expected result, three symptoms then full recovery:
 
@@ -104,25 +103,22 @@ error: Could not read ...
 failed to load pack in position 1
 failed to load pack entry for oid[...] ...
 
-=== symptom 3: a change collection fails with the incident error ===
+=== symptom 3: every fetch fails ===
 Resolving deltas: 0% (0/1) ...
 fatal: fetch-pack: invalid index-pack output
 fetch exit=128
 tmp_pack corpses left behind: 1 ...
 
-=== the fix that worked in production: move the stale multi-pack-index aside ===
+=== the recovery: move the stale multi-pack-index aside ===
 the release tip is readable again, no re-clone needed
-pending collection fetch exit=0
+the pending fetch now succeeds, exit=0
 fsck exit=0
 mirror healthy with a fresh index
 ```
 
-Two consecutive runs with different random blob content reproduce all three symptoms and the
-full recovery, so the construction does not depend on luck.
+## Related git issues observed while building this
 
-## Related git 2.54 issues observed while building this
-
-All confirmed on `alpine/git:2.54.0`:
+All confirmed on git 2.54.0; the tmp_pack corpse also reproduces on git 2.43.0:
 
 - A fetch that keeps its pack triggers a detached maintenance gc that consolidates packs and
   writes a multi-pack-index even when `gc.auto=0` is set.
@@ -131,9 +127,6 @@ All confirmed on `alpine/git:2.54.0`:
 - `git multi-pack-index write` globs `*.idx`, which matches those hidden staging files, so the
   index can list staged pack names that never exist as real packs.
 - A failed fetch leaves a `tmp_pack_*` corpse in the pack directory.
-- `git pack-objects` silently writes nothing when its output pack hash equals a pack that
-  already exists, which makes "consolidate into a new pack" a no-op when the content would be
-  identical.
 - The multi-pack-index maps each object to its newest holding pack by file timestamp, at
   second granularity. Packs created within the same wall-clock second tie, and which pack wins
   the tie is not predictable from the outside, so two mirrors built in the same second can get
@@ -141,5 +134,5 @@ All confirmed on `alpine/git:2.54.0`:
 
 ## Tested with
 
-- git 2.54.0 (`alpine/git:2.54.0` Docker image)
-- bash on Alpine Linux
+- git 2.43.0 (`buildpack-deps:noble-scm`)
+- git 2.54.0 (`alpine/git:2.54.0`)
