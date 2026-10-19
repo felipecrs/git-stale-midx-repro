@@ -14,10 +14,11 @@ RUN set -eux; \
     tar xzf "git-${GIT_VERSION}.tar.gz"; \
     cd "git-${GIT_VERSION}"; \
     make -j"$(nproc)" NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 all; \
-    make NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 prefix=/usr/local install
+    make NO_GETTEXT=1 NO_TCLTK=1 NO_EXPAT=1 NO_RUST=1 prefix=/opt/git install
 
 FROM buildpack-deps:noble-scm
 
-COPY --from=build /usr/local /usr/local
+COPY --from=build /opt/git /opt/git
+ENV PATH="/opt/git/bin:${PATH}"
 
 RUN git --version
