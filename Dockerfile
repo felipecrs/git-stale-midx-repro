@@ -6,8 +6,8 @@ ARG GIT_VERSION=2.55.0
 
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends software-properties-common; \
-    add-apt-repository -y -s ppa:git-core/ppa; \
+    apt-get install -y --no-install-recommends debian-archive-keyring; \
+    echo "deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/sid-src.list; \
     apt-get update; \
     apt-get build-dep -y git; \
     mkdir /build; \
@@ -21,7 +21,7 @@ RUN set -eux; \
         ver=$(cd "${srcdir}" && dpkg-parsechangelog -S Version); \
         suffix=${ver#*:}; \
         suffix=${suffix#*-}; \
-        printf 'git (1:%s-%s) noble; urgency=medium\n\n  * New upstream release.\n\n -- Felipe Santos <felipecassiors@gmail.com>  %s\n\n' \
+        printf 'git (1:%s-%s) unstable; urgency=medium\n\n  * New upstream release.\n\n -- Felipe Santos <felipecassiors@gmail.com>  %s\n\n' \
             "${GIT_VERSION}" "${suffix}" "$(date -R)" \
             | cat - "git-${GIT_VERSION}/debian/changelog" > "git-${GIT_VERSION}/debian/changelog.new"; \
         mv "git-${GIT_VERSION}/debian/changelog.new" "git-${GIT_VERSION}/debian/changelog"; \
