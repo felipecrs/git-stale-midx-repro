@@ -31,8 +31,10 @@ RUN set -eux; \
 
 FROM buildpack-deps:noble-curl
 
+ARG GIT_VERSION=2.55.0
+
 RUN --mount=type=bind,from=build,source=/build,target=/tmp/debs \
     apt-get update; \
     apt-get install -y /tmp/debs/git_*.deb /tmp/debs/git-man_*.deb; \
     rm -rf /var/lib/apt/lists/*; \
-    git --version
+    git --version | tee /dev/stderr | grep -q "git version ${GIT_VERSION}"
