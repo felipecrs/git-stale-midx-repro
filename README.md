@@ -64,18 +64,17 @@ background maintenance disabled so the layout stays deterministic:
 
 ## Running it
 
-Needs bash and a git with multi-pack-index support (2.28+). The easiest way is Docker:
+The whole reproduction runs inside a docker build: it prints every step, and the build only
+succeeds if all three symptoms reproduce and the recovery works.
 
 ```bash
-docker run --rm \
-  -v "$PWD/reproduce.sh":/scripts/reproduce.sh \
-  -v "$PWD/.repro":/data \
-  -e REPRO_DATA_DIR=/data/run \
-  --entrypoint bash buildpack-deps:noble-scm \
-  /scripts/reproduce.sh
+docker build https://github.com/felipecrs/git-stale-midx-repro.git
 ```
 
-Or on any machine with git installed:
+The image is pinned to git 2.54.0, where the bug is present. On git 2.56.0 and newer the bug
+is fixed upstream and the script fails loudly instead of reproducing.
+
+Or on any machine with bash and a git with multi-pack-index support (2.28+) installed:
 
 ```bash
 ./reproduce.sh
