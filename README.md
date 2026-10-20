@@ -64,12 +64,16 @@ background maintenance disabled so the layout stays deterministic:
 
 ## Running it
 
-The whole reproduction runs inside a docker build: it prints every step, and the build only
-succeeds if all three symptoms reproduce and the recovery works.
+The whole reproduction runs inside a docker build and prints every step.
 
 ```bash
-docker build https://github.com/felipecrs/git-stale-midx-repro.git
+docker build --no-cache-filter=repro https://github.com/felipecrs/git-stale-midx-repro.git
 ```
+
+The reproduction lives in its own `repro` stage, and `--no-cache-filter=repro` makes the
+builder rerun that stage every time even when everything else is cached, so a cached build
+never hides a rerun. The build only succeeds if all three symptoms reproduce and the
+recovery works.
 
 The image is pinned to git 2.54.0, where the bug is present. On git 2.56.0 and newer the bug
 is fixed upstream and the script fails loudly instead of reproducing.
