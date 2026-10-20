@@ -118,6 +118,33 @@ fsck exit=0
 mirror healthy with a fresh index
 ```
 
+## git 2.56.0 deb image
+
+Until the git-core PPA publishes 2.56.0 for noble, this repo also ships it as
+prebuilt debs in a scratch image, built by GitHub Actions for amd64 and arm64:
+
+```
+ghcr.io/felipecrs/git-stale-midx-repro/git-deb:2.56.0
+```
+
+- Built from the git-core PPA packaging with the upstream 2.56.0 tarball swapped
+  in, for Ubuntu 24.04 (noble).
+- Contains every deb from the build (git, git-man, git-svn, ...) under `/debs/`.
+- git-man is a hard `Depends` of git in this packaging, so it is dropped from
+  git's dependency list; the git deb then installs standalone, and the git-man
+  deb is there for anyone who wants the man pages.
+
+Usage:
+
+```dockerfile
+FROM ubuntu:24.04
+COPY --from=ghcr.io/felipecrs/git-stale-midx-repro/git-deb:2.56.0 /debs/git_*.deb /tmp/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends /tmp/git_*.deb \
+    && git --version \
+    && rm -rf /var/lib/apt/lists/* /tmp/git_*.deb
+```
+
 ## Related git issues observed while building this
 
 All confirmed on git 2.54.0; the tmp_pack corpse also reproduces on git 2.43.0:
